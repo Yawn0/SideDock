@@ -11,6 +11,7 @@ import time
 import ctypes
 import sys
 import os
+import psutil
 
 from settings import SettingsDialog, load_config, save_config
 from tray import TrayManager
@@ -39,6 +40,14 @@ class SideDock:
         self.config = load_config()
         self.settings_window = None
 
+        # ── Track network stats ──
+        self.last_net_bytes = 0
+        self.last_net_time = time.time()
+        try:
+            self.last_net_bytes = psutil.net_io_counters().bytes_recv
+        except Exception:
+            pass
+
         # ── Root window setup ──
         self.root = tk.Tk()
         self.root.title("SideDock")
@@ -47,16 +56,65 @@ class SideDock:
         self.root.attributes("-transparentcolor", TRANSPARENT_COLOR)
         self.root.configure(bg=TRANSPARENT_COLOR)
 
+        # ── Main container frame ──
+        self.container_frame = tk.Frame(self.root, bg=TRANSPARENT_COLOR)
+        self.container_frame.pack(expand=True, fill="both")
+
+        # ── Stats frame ──
+        self.stats_frame = tk.Frame(self.container_frame, bg=TRANSPARENT_COLOR)
+        
+        effective_color = self._effective_color()
+        stats_font = ("Segoe UI", max(9, int(self.config["font_size"] * 0.25)))
+        
+        self.cpu_label = tk.Label(
+            self.stats_frame,
+            text="CPU: 0%",
+            bg=TRANSPARENT_COLOR,
+            font=stats_font,
+            fg=effective_color,
+            anchor="w",
+        )
+        self.cpu_label.pack(fill="x", expand=True)
+
+        self.ram_label = tk.Label(
+            self.stats_frame,
+            text="RAM: 0%",
+            bg=TRANSPARENT_COLOR,
+            font=stats_font,
+            fg=effective_color,
+            anchor="w",
+        )
+        self.ram_label.pack(fill="x", expand=True)
+
+        self.net_label = tk.Label(
+            self.stats_frame,
+            text="DL: 0.0 MB/s",
+            bg=TRANSPARENT_COLOR,
+            font=stats_font,
+            fg=effective_color,
+            anchor="w",
+        )
+        self.net_label.pack(fill="x", expand=True)
+
+        # ── Divider line ──
+        self.divider = tk.Frame(
+            self.container_frame,
+            width=2,
+            bg=effective_color,
+        )
+
         # ── Clock label ──
         self.clock_label = tk.Label(
-            self.root,
+            self.container_frame,
             text="",
             bg=TRANSPARENT_COLOR,
             font=("Segoe UI Light", self.config["font_size"]),
-            fg=self._effective_color(),
+            fg=effective_color,
             anchor="center",
         )
-        self.clock_label.pack(expand=True, fill="both")
+
+        # ── Layout arrangement ──
+        self._arrange_layout()
 
         # ── Position ──
         self._apply_position()
@@ -89,6 +147,19 @@ class SideDock:
         # Re-assert topmost after style change
         self.root.attributes("-topmost", True)
 
+    def _arrange_layout(self):
+        """Pack or unpack stats elements according to configuration."""
+        self.stats_frame.pack_forget()
+        self.divider.pack_forget()
+        self.clock_label.pack_forget()
+
+        if self.config.get("show_stats", True):
+            self.stats_frame.pack(side="left", fill="y", padx=(10, 0), pady=4)
+            self.divider.pack(side="left", fill="y", padx=12, pady=8)
+            self.clock_label.pack(side="left", expand=True, fill="both", padx=(0, 10))
+        else:
+            self.clock_label.pack(expand=True, fill="both")
+
     def _apply_position(self):
         """Position the window. Defaults to top-right if no saved position."""
         self.root.update_idletasks()
@@ -96,8 +167,12 @@ class SideDock:
         sh = self.root.winfo_screenheight()
 
         # Estimate label size based on font
-        estimated_w = self.config["font_size"] * 5
-        estimated_h = int(self.config["font_size"] * 1.6)
+        font_size = self.config["font_size"]
+        if self.config.get("show_stats", True):
+            estimated_w = int(font_size * 6.5) + 40
+        else:
+            estimated_w = font_size * 5
+        estimated_h = int(font_size * 1.6)
 
         px = self.config.get("pos_x")
         py = self.config.get("pos_y")
@@ -143,9 +218,40 @@ class SideDock:
         return result
 
     def _tick(self):
-        """Update the clock every 500ms."""
+        """Update the clock and stats every 500ms."""
+        # Update clock
         now = time.strftime(self.config.get("time_format", "%H:%M:%S"))
         self.clock_label.config(text=now)
+
+        # Update stats if enabled
+        if self.config.get("show_stats", True):
+            try:
+                # CPU usage
+                cpu_pct = psutil.cpu_percent(interval=None)
+                self.cpu_label.config(text=f"CPU: {int(cpu_pct)}%")
+
+                # RAM usage
+                ram = psutil.virtual_memory()
+                self.ram_label.config(text=f"RAM: {int(ram.percent)}%")
+
+                # Download speed calculation
+                current_time = time.time()
+                net_io = psutil.net_io_counters()
+                current_bytes = net_io.bytes_recv
+
+                elapsed_time = current_time - self.last_net_time
+                if elapsed_time > 0:
+                    bytes_diff = current_bytes - self.last_net_bytes
+                    mb_s = (bytes_diff / (1024 * 1024)) / elapsed_time
+                    if mb_s < 0:
+                        mb_s = 0.0
+                    self.net_label.config(text=f"DL: {mb_s:.1f} MB/s")
+
+                self.last_net_bytes = current_bytes
+                self.last_net_time = current_time
+            except Exception:
+                pass
+
         self.root.after(500, self._tick)
 
     # ── Tray callbacks (called from tray thread → must schedule on main thread) ──
@@ -167,11 +273,25 @@ class SideDock:
         """Apply new settings from the options dialog in real-time."""
         self.config = new_config
 
-        # Update font
+        effective_color = self._effective_color()
+        stats_font = ("Segoe UI", max(9, int(self.config["font_size"] * 0.25)))
+
+        # Update clock font/color
         self.clock_label.config(
             font=("Segoe UI Light", self.config["font_size"]),
-            fg=self._effective_color(),
+            fg=effective_color,
         )
+
+        # Update stats font/color
+        self.cpu_label.config(font=stats_font, fg=effective_color)
+        self.ram_label.config(font=stats_font, fg=effective_color)
+        self.net_label.config(font=stats_font, fg=effective_color)
+
+        # Update divider color
+        self.divider.config(bg=effective_color)
+
+        # Update layout packing (show/hide stats)
+        self._arrange_layout()
 
         # Reposition / resize
         self._apply_position()

@@ -7,15 +7,12 @@ Controlled entirely from the **system tray**.
 ## Features
 
 - 🕐 **Always-on-top clock** — stays visible over all windows
+- 📊 **Real-time stats** — optional CPU usage, RAM usage, and download speed (in MB/s)
 - 👻 **Click-through** — the overlay never captures mouse or keyboard input
-- 🎨 **Customizable** — adjust text opacity, color, font size, and position
+- 🎨 **Customizable** — adjust text opacity, color, font size, position, and toggle stats visibility
 - 🚀 **Start with Windows** — optional auto-launch on login
 - 💾 **Persistent settings** — your preferences are saved to `config.json`
 - 🔇 **Minimal footprint** — no taskbar icon, no Alt-Tab entry
-
-## Screenshot
-
-> Right-click the system tray icon → **Options** to open the settings panel.
 
 ## Getting Started
 
@@ -56,6 +53,7 @@ If no `config.json` exists, the app creates one with default values on first run
 | `pos_x` | int/null | `null` | X position in pixels (`null` = top-right) |
 | `pos_y` | int/null | `null` | Y position in pixels (`null` = top-right) |
 | `time_format` | string | `"%H:%M:%S"` | Python `strftime` format string |
+| `show_stats` | boolean | `true` | Show CPU, RAM, and Download speed (in MB/s) |
 
 ## Building the `.exe`
 

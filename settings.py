@@ -29,6 +29,7 @@ def load_config():
         "pos_x": None,
         "pos_y": None,
         "time_format": "%H:%M:%S",
+        "show_stats": True,
     }
     try:
         with open(CONFIG_PATH, "r") as f:
@@ -250,16 +251,16 @@ class SettingsDialog(tk.Toplevel):
         pos_y_spin.pack(side="left", padx=(4, 0))
         pos_y_spin.bind("<Return>", lambda e: self._on_pos_change())
 
-        # --- Start with Windows ---
+        # --- Start with Windows & Show Stats ---
         separator2 = tk.Frame(self, height=1, bg="#45475a")
         separator2.pack(fill="x", padx=16, pady=(12, 4))
 
-        startup_frame = tk.Frame(self, bg="#1e1e2e")
-        startup_frame.pack(fill="x", padx=16, pady=(4, 0))
+        options_frame = tk.Frame(self, bg="#1e1e2e")
+        options_frame.pack(fill="x", padx=16, pady=(4, 0))
 
         self.startup_var = tk.BooleanVar(value=is_startup_enabled())
         startup_cb = tk.Checkbutton(
-            startup_frame,
+            options_frame,
             text="Start with Windows",
             variable=self.startup_var,
             command=self._on_startup_toggle,
@@ -274,6 +275,24 @@ class SettingsDialog(tk.Toplevel):
             bd=0,
         )
         startup_cb.pack(side="left")
+
+        self.show_stats_var = tk.BooleanVar(value=self.config.get("show_stats", True))
+        show_stats_cb = tk.Checkbutton(
+            options_frame,
+            text="Show Stats",
+            variable=self.show_stats_var,
+            command=self._on_show_stats_toggle,
+            bg="#1e1e2e",
+            fg="#cdd6f4",
+            selectcolor="#313244",
+            activebackground="#1e1e2e",
+            activeforeground="#cdd6f4",
+            font=("Segoe UI", 11),
+            cursor="hand2",
+            highlightthickness=0,
+            bd=0,
+        )
+        show_stats_cb.pack(side="right")
 
         # --- Bottom padding ---
         tk.Frame(self, height=16, bg="#1e1e2e").pack()
@@ -308,6 +327,10 @@ class SettingsDialog(tk.Toplevel):
 
     def _on_startup_toggle(self):
         set_startup(self.startup_var.get())
+
+    def _on_show_stats_toggle(self):
+        self.config["show_stats"] = self.show_stats_var.get()
+        self._apply()
 
     def _apply(self):
         """Push changes to the main app and save to disk."""

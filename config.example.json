@@ -4,5 +4,6 @@
     "font_size": 48,
     "pos_x": null,
     "pos_y": null,
-    "time_format": "%H:%M:%S"
+    "time_format": "%H:%M:%S",
+    "show_stats": true
 }
