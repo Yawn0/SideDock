@@ -110,7 +110,7 @@ class SideDock:
             bg=TRANSPARENT_COLOR,
             font=("Segoe UI Light", self.config["font_size"]),
             fg=effective_color,
-            anchor="center",
+            anchor="e",
         )
 
         # ── Layout arrangement ──
@@ -154,11 +154,13 @@ class SideDock:
         self.clock_label.pack_forget()
 
         if self.config.get("show_stats", True):
-            self.stats_frame.pack(side="left", fill="y", padx=(10, 0), pady=4)
-            self.divider.pack(side="left", fill="y", padx=12, pady=8)
-            self.clock_label.pack(side="left", expand=True, fill="both", padx=(0, 10))
+            self.stats_frame.pack(side="left", fill="y", padx=(12, 0), pady=4)
+            self.divider.pack(side="left", fill="y", padx=16, pady=8)
+            self.clock_label.pack(side="right", expand=True, fill="both", padx=(0, 12))
+            self.clock_label.config(anchor="e")
         else:
-            self.clock_label.pack(expand=True, fill="both")
+            self.clock_label.pack(side="right", expand=True, fill="both", padx=(0, 12))
+            self.clock_label.config(anchor="e")
 
     def _apply_position(self):
         """Position the window. Defaults to top-right if no saved position."""
@@ -166,13 +168,10 @@ class SideDock:
         sw = self.root.winfo_screenwidth()
         sh = self.root.winfo_screenheight()
 
-        # Estimate label size based on font
+        # Always use a stable width and height to keep the clock right-aligned and prevent shifts
         font_size = self.config["font_size"]
-        if self.config.get("show_stats", True):
-            estimated_w = int(font_size * 6.5) + 40
-        else:
-            estimated_w = font_size * 5
-        estimated_h = int(font_size * 1.6)
+        estimated_w = int(font_size * 7.8) + 60
+        estimated_h = max(60, int(font_size * 1.6))
 
         px = self.config.get("pos_x")
         py = self.config.get("pos_y")
