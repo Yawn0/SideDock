@@ -16,6 +16,15 @@ import psutil
 from settings import SettingsDialog, load_config, save_config
 from tray import TrayManager
 
+# ── Enable High-DPI awareness ──
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
+except Exception:
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
+
 # ── Win32 constants for click-through window ──
 GWL_EXSTYLE = -20
 WS_EX_LAYERED = 0x00080000
